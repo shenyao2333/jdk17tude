@@ -9,5 +9,4 @@ public class Jdk17tudeApplication {
     public static void main(String[] args) {
         SpringApplication.run(Jdk17tudeApplication.class, args);
     }
-
 }
