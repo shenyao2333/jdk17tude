@@ -17,8 +17,8 @@ public class TestHttpClient {
     public static void main(String[] args) {
 
 
-        HttpClient client = HttpClient.newHttpClient();
-
+        HttpClient client = HttpClient
+                .newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create("https://kdd.gzbytc.com/api/code"))
                 .build();

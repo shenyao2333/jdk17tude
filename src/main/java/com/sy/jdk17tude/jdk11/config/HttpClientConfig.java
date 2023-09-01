@@ -2,8 +2,12 @@ package com.sy.jdk17tude.jdk11.config;
 
 import org.springframework.context.annotation.Bean;
 
+import java.net.URI;
 import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
 import java.time.Duration;
+import java.util.Optional;
+import java.util.concurrent.Executor;
 
 /**
  * @author: sy
@@ -13,19 +17,12 @@ import java.time.Duration;
 public class HttpClientConfig {
 
 
-    @Bean
-    public HttpClient httpClient() {
-        HttpClient.Builder builder = HttpClient.newBuilder();
 
-        // 设置超时时间
-        builder.connectTimeout(Duration.ofMillis(5));
-
-
-
-        // 添加日志拦截器
-        builder.executor(new LoggingInterceptor());
-
-        return builder.build();
+    public  HttpClient httpClient() {
+      return    HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_2)
+                .connectTimeout(Duration.ofSeconds(10))
+                .build();
     }
 
 
