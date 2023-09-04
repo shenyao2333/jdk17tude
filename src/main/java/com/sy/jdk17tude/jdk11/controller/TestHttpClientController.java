@@ -1,16 +1,18 @@
 package com.sy.jdk17tude.jdk11.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sy.jdk17tude.jdk11.domain.UserInfo;
 import com.sy.jdk17tude.jdk11.utils.HttpClientUtil;
 import lombok.AllArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.net.URI;
-import java.net.http.HttpClient;
+
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
+import java.util.HashMap;
 
 /**
  * @author: sy
@@ -45,6 +47,27 @@ public class TestHttpClientController {
         System.out.println(jsonNode);
         return jsonNode;
     }
+
+
+
+    @GetMapping("/test2")
+    public Object test2(){
+        HashMap<String, String> dataMap = new HashMap<>();
+        dataMap.put("data","12");
+        dataMap.put("name","小明");
+        JsonNode jsonNode = HttpClientUtil.sendPostForm("http://127.0.0.1:8080/testHttpClient/testForm",dataMap);
+        return jsonNode;
+    }
+
+
+
+    @PostMapping("/testForm")
+    public Object testForm(@RequestBody UserInfo userInfo) throws JsonProcessingException {
+        System.out.println(userInfo);
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.writeValueAsString(userInfo);
+    }
+
 
 
 

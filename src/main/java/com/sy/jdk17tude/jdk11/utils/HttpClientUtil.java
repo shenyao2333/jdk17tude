@@ -5,13 +5,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeCreator;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.SneakyThrows;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
@@ -46,6 +52,47 @@ public class HttpClientUtil {
     }
 
 
+    public static JsonNode sendPostForm(String url, Map<String, String> fields){
+        HttpRequest.Builder requestBuilder = builderFormHeader(url);
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            String fieldHeader = "--boundary\r\n" +
+                    "Content-Disposition: form-data; name=\"" + entry.getKey() + "\"\r\n" +
+                    "Content-Type: text/plain\r\n\r\n";
+            String fieldValue = entry.getValue() + "\r\n";
+            requestBuilder = requestBuilder.POST(HttpRequest.BodyPublishers.ofByteArray(createMultipartField(fieldHeader, fieldValue)));
+        }
+        return send(requestBuilder.build());
+    }
+
+
+
+
+    public static JsonNode uploadFile(String url, InputStream stream, Map<String, String> fields)  {
+        HttpRequest.Builder requestBuilder = builderFormHeader(url);
+        for (Map.Entry<String, String> entry : fields.entrySet()) {
+            String fieldHeader = "--boundary\r\n" +
+                    "Content-Disposition: form-data; name=\"" + entry.getKey() + "\"\r\n" +
+                    "Content-Type: text/plain\r\n\r\n";
+            String fieldValue = entry.getValue() + "\r\n";
+            requestBuilder = requestBuilder.POST(HttpRequest.BodyPublishers.ofByteArray(createMultipartField(fieldHeader, fieldValue)));
+        }
+        String fileHeader = """
+                --boundary\r
+                Content-Disposition: form-data; name="file"; filename="filename"\r
+                Content-Type: application/octet-stream\r
+                """;
+        byte[] fileHeaderBytes = createMultipartField(fileHeader, "");
+        byte[] streamBytes = convertInputStreamToByteArray(stream);
+
+        byte[] requestBodyBytes = mergeByteArrays(fileHeaderBytes, streamBytes);
+        HttpRequest.BodyPublisher requestBodyPublisher = HttpRequest.BodyPublishers.ofByteArray(requestBodyBytes);
+
+        HttpRequest request = requestBuilder.POST(requestBodyPublisher).build();
+        return send(request);
+    }
+
+
+
 
     public static HttpRequest.Builder builderJsonHeader(){
        return HttpRequest.newBuilder()
@@ -56,6 +103,17 @@ public class HttpClientUtil {
     public static HttpRequest.Builder builderJsonHeader(String url){
         return builderJsonHeader().uri(URI.create(url));
     }
+
+
+    public static HttpRequest.Builder  builderFormHeader(){
+        return   HttpRequest.newBuilder()
+                .header("Content-Type", "multipart/form-data; boundary=boundary");
+    }
+
+    public static HttpRequest.Builder  builderFormHeader(String url){
+        return   builderFormHeader().uri(URI.create(url));
+    }
+
 
 
     public static HttpRequest.Builder builderJsonHeader(String url,Map<String, String> headers){
@@ -98,35 +156,28 @@ public class HttpClientUtil {
 
 
 
-    public static HttpResponse<String> uploadWithStream(String url, InputStream inputStream, Map<String, String> fields) throws Exception {
-        HttpClient httpClient = HttpClient.newBuilder()
-                .version(HttpClient.Version.HTTP_2)
-                .build();
-
-        // 创建多部分请求体构建器
-        HttpRequest.BodyPublisher bodyPublisher = HttpRequest.BodyPublishers.ofMultipartFormData(fileUploader -> {
-            // 添加其他字段
-            if (fields != null) {
-                for (Map.Entry<String, String> entry : fields.entrySet()) {
-                    fileUploader.addFormField(entry.getKey(), entry.getValue());
-                }
-            }
-
-            // 添加文件流
-            fileUploader.addBinaryField("file", inputStream);
-        });
-
-        // 创建请求
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .header("Content-Type", "multipart/form-data") // 设置 Content-Type
-                .POST(bodyPublisher)
-                .build();
-
-        return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    @SneakyThrows
+    private static byte[] convertInputStreamToByteArray(InputStream inputStream)  {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        byte[] buffer = new byte[4096];
+        int bytesRead;
+        while ((bytesRead = inputStream.read(buffer)) != -1) {
+            byteArrayOutputStream.write(buffer, 0, bytesRead);
+        }
+        return byteArrayOutputStream.toByteArray();
     }
 
 
+    private static byte[] createMultipartField(String header, String value) {
+        return (header + value).getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static byte[] mergeByteArrays(byte[] array1, byte[] array2) {
+        byte[] mergedArray = new byte[array1.length + array2.length];
+        System.arraycopy(array1, 0, mergedArray, 0, array1.length);
+        System.arraycopy(array2, 0, mergedArray, array1.length, array2.length);
+        return mergedArray;
+    }
 
 
 
